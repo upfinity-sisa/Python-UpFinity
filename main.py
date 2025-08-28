@@ -4,7 +4,7 @@ from mysql.connector import connect, Error
 
 def conectar_banco():
     config = {
-      'user': "upfinity_insert",
+      'user': "upfinity_insert_select",
       'password': "Urubu100@",
       'host': 'localhost',
       'database': "upfinity"
@@ -42,46 +42,79 @@ def capturar_dado(tipo):
         return None
     
 def buscar_informacoes_paremtros(dados):
+    print(dados['idAtm'])
     conn = conectar_banco()
     cursor = conn.cursor()
-    query = "SELECT c.funcaop, c.unidadeMedida, p.limite FROM Parametro as p JOIN Componente as c ON p.fkComponente = c.idComponente WHERE p.fkAtm;"
-    cursor.execute(query, dados[0].fkAtm)
-    resultado = cursor.fetchall() 
+    query = """
+    SELECT p.idParametro, c.funcaoMonitorada, c.unidadeMedida
+    FROM Parametro as p
+    JOIN Componente as c ON p.fkComponente = c.idComponente
+    WHERE p.fkAtm = %s;
+    """
+    cursor.execute(query, (dados['idAtm'],))
+    resultado = cursor.fetchall()
+    
     cursor.close()
     conn.close()
 
+    print("indo......")
+    print(resultado)
+
     configuracoes = {}
-    for tipo, unidade in resultado:
+    print("indo......")
+
+    for id_param, tipo, unidade in resultado:
         if tipo not in configuracoes:
             configuracoes[tipo] = []
-        configuracoes[tipo].append(unidade)
+        configuracoes[tipo].append({'id_param': id_param, 'unidade': unidade})
+
+    print("configura")
+    print(configuracoes)
     return configuracoes
+
 
 def validar_atm(dados):
     conn = conectar_banco()
     cursor = conn.cursor()
-    query = "SELECT idAtm, macAdress, ip FROM Atm WHERE macAdress = %s AND ip = %s"
-    cursor.execute(query, dados['mac_adress', dados['ip_adress']])
-    resultado = cursor.fetchall() 
+
+    query = "SELECT idAtm, hostname FROM Atm WHERE macAddress = %s AND ip = %s"
+    cursor.execute(query, (dados['mac_address'], dados['ip_address']))
+    resultado = cursor.fetchone()  
+
     cursor.close()
     conn.close()
 
     if resultado:
-        print(f"\n✅ Monitoramento iniciado com sucesso para o ATM com o Mac Adress: {dados['mac_adress']} ✅\n")
-        return resultado[0]
+        atm_info = {
+            'idAtm': resultado[0],
+            'hostname': resultado[1],
+            'mac_address': dados['mac_address'],
+            'ip_address': dados['ip_address']
+        }
+
+        print(f"\n🔹 Monitoramento iniciado com sucesso! 🔹\n"
+              f"   🖥️ ATM ID: {atm_info['idAtm']}\n"
+              f"   💻 Hostname: {atm_info['hostname']}\n"
+              f"   📡 MAC: {atm_info['mac_address']}\n"
+              f"   🌐 IP: {atm_info['ip_address']}\n"
+              f"✅ Seja bem-vindo(a)! ✅\n")
+
+        return atm_info
     else:
-        print(f"\n⚠️ Este ATM ({dados['mac_adress']}) não foi encontrado no sistema. ⚠️\n")
+        print(f"\n❌ Este ATM ({dados['mac_address']}) não foi encontrado no sistema. ❌\n")
         return None
 
 
 
-def procurar_mac_adress():
+
+def procurar_mac_address():
+    print('mac.................')
     #Exemplo mais para frente será o mac da maquina
-    dados_atm = {
-        "mac_adress": "1A:1A:1A:1A:1A:1A",
-        "ip_adress": "111.111.1.11"
+    atm_info = {
+        "mac_address": "00:1A:2B:3C:4D:5E",
+        "ip_address": "192.168.1.100"
     }
-    return dados_atm
+    return atm_info
 
 def procurar_limite(fkAtm, tipo_componente, unidade):
     conn = conectar_banco()
@@ -115,7 +148,7 @@ def processar_leitura(componente_id, valor, limite):
                 INSERT INTO alerta (componente_id, tipo_alerta, data_inicio, status)
                 VALUES (%s, 'umidade_alta', NOW(), 'aberto')
             """, (componente_id,))
-            db.commit()
+            # db.commit()
     else:
         if alerta_aberto:
             cursor.execute("""
@@ -123,30 +156,44 @@ def processar_leitura(componente_id, valor, limite):
                 SET data_fim = NOW(), status = 'fechado'
                 WHERE id_alerta = %s
             """, (alerta_aberto[0],))
-            db.commit()
+            # db.commit()
 
-     
+def inserir_registro(valor, fk_parametro):
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    query = "INSERT INTO Registro (valor, horario, fkParametro) VALUES (%s, NOW(), %s);"
+    cursor.execute(query, (valor, fk_parametro))
+    conn.commit()
+    print(cursor.rowcount, "registro inserido")
+    cursor.close()
+    conn.close()
+
 
 def coletar_dados():
-    dados_mac_ip = procurar_mac_adress
-    dados_atm = validar_atm(dados_mac_ip)
-    if dados_atm == None:
+    coletar_dados_continuo = True
+    dados_mac_ip = procurar_mac_address()
+    print(dados_mac_ip)
+    print('dmi.................')
+    atm_info = validar_atm(dados_mac_ip)
+    print('dmiatm.................')
+    print(atm_info)
+    if atm_info == None:
         return
-    informcao_parametros = buscar_informacoes_paremtros(dados_atm)
-    if dados_atm and dados_mac_ip and informcao_parametros: 
-        coletar_dados_continuo = True
-        while coletar_dados_continuo:
-            for tipo_componente, medidas in informcao_parametros.items():
-                for unidade in medidas:
-                    valor_dado = capturar_dado(tipo_componente)
-                    print(f"\n Coleta: [{tipo_componente}] ({unidade}) → Valor: {valor_dado}")
+    informcao_parametros = buscar_informacoes_paremtros(atm_info)
+    print("parametro.............")
+    if atm_info == None or dados_mac_ip == None or informcao_parametros == None:
+        return
+    while coletar_dados_continuo:
+        for tipo_componente, medidas in informcao_parametros.items():
+            for medida in medidas:
+                valor_dado = capturar_dado(tipo_componente)
+                print(f"\nColeta: [{tipo_componente}] ({medida['unidade']}) → Valor: {valor_dado}")
 
-                    limite_valor = procurar_limite ()
-
-                    if limite_valor: 
-
-    else:
-        return 
+                # Inserir no registro junto com o fkParametro
+                inserir_registro(valor_dado, medida['id_param'])
+                # limite_valor = procurar_limite ()
+                # print(limite_valor)
+                # if limite_valor: 
     
     
 
@@ -193,7 +240,7 @@ def main():
         try:
             resposta_usuario = int(input("  Escolha uma opção: "))
             if resposta_usuario == 1:
-                procurar_mac_adress() 
+                coletar_dados() 
                 break  
             elif resposta_usuario == 2:
                 print(saida)
