@@ -19,6 +19,8 @@ acoes = {
     "PROCESSOS_desativado": lambda: sum(1 for p in p.process_iter(['status']) if p.info['status'] != 'running'),
     }
 
+atm_info = set()
+
 def capturar_dado(tipo):
     global acoes
     try:
@@ -53,6 +55,7 @@ def buscar_informacoes_paremtros(dados):
 def validar_atm(dados):
     resultado = Conectar_banco("SELECT idAtm, hostname FROM Atm WHERE macAddress = %s AND ip = %s",
                                 (dados.get('mac_address'), dados.get('ip_address')))
+    global atm_info
     print(resultado)
     if resultado:
         atm_info = {
@@ -103,7 +106,7 @@ def processar_leitura_com_alerta(fkParametro, tipo, valor, limite):
     elif valor >= limite:
         nivel = "Alerta"
     elif valor >= limite * 0.9:
-        nivel = "Quase"
+        nivel = "Atenção"
     else:
         nivel = None
 
@@ -151,29 +154,34 @@ def coletar_dados():
 
     if atm_info == None or dados_mac_ip == None or informcao_parametros == None:
         return
+    Conectar_banco("UPDATE Atm SET statusAtm = 'Ativo' WHERE idAtm = %s", atm_info.get('idAtm'))
+    print("ATIVADO =======================================================================")
+
     
     while coletar_dados_continuo:
-        print('╔═══════════════════════════════════════════════════════════════════════╗')
-        for tipo_componente, medidas in informcao_parametros.items():
-            for medida in medidas:
+            print('╔═══════════════════════════════════════════════════════════════════════╗')
+            for tipo_componente, medidas in informcao_parametros.items():
+                for medida in medidas:
 
-                valor_dado = capturar_dado(tipo_componente)
-                print(
-                    f"\n  - Coleta: {tipo_componente} "
-                    f"({medida['unidade']}) → Valor: {valor_dado} {medida['unidade']} "
-                    f"→ Limite Configurado: {medida['limite']}"
-                )
-                inserir_registro(valor_dado, medida['id_param'])
-                processar_leitura_com_alerta(
-                    fkParametro = medida['id_param'],
-                    tipo = tipo_componente,
-                    valor = float(valor_dado),
-                    limite = float(medida['limite'])
-                )
-        print('\n╚═══════════════════════════════════════════════════════════════════════╝')
-        time.sleep(10) 
-        
+                    valor_dado = capturar_dado(tipo_componente)
+                    print(
+                        f"\n  - Coleta: {tipo_componente} "
+                        f"({medida['unidade']}) → Valor: {valor_dado} {medida['unidade']} "
+                        f"→ Limite Configurado: {medida['limite']}"
+                    )
+                    inserir_registro(valor_dado, medida['id_param'])
+                    processar_leitura_com_alerta(
+                        fkParametro = medida['id_param'],
+                        tipo = tipo_componente,
+                        valor = float(valor_dado),
+                        limite = float(medida['limite'])
+                    )
+            print('\n╚═══════════════════════════════════════════════════════════════════════╝')
+            time.sleep(10)
+
+            
 def main():
+    global atm_info
     logo = """
     ║══════════════════════════════════════════════════════════════════════════════════╣                                                                 
     ║ ███    ███  ██████  ███    ██ ██ ████████  ██████  ██████  ██ ███    ██  ██████  ║
@@ -229,6 +237,9 @@ def main():
             break
         except ValueError:
             print("Por favor, digite um número válido.")
-            print(menu_resumido)  
+            print(menu_resumido)
+    Conectar_banco("UPDATE Atm SET statusAtm = 'Inativo' WHERE idAtm = %s", atm_info.get('idAtm'))
+    print("DESATIVADO =======================================================================")
+    print("\n Status Atm atualizado ")  
 
 main()
