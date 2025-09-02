@@ -4,19 +4,31 @@ import os
 
 load_dotenv()
 
-def Conectar_banco(instrucaoSQL, valores=None):
-    config = {
-      'user': os.getenv("USER_DB"),
-      'password': os.getenv("PASSWORD_DB"),
-      'host': os.getenv("HOST_DB"),
-      'database': os.getenv("DATABASE_DB")
+def Fazer_consulta_banco(config):
+    """
+    Recebe um dicionário com:
+        config = {
+            "query": "SQL AQUI",
+            "params": (param1, param2, ...)
+        }
+    """
+    instrucaoSQL = config.get("query")
+    valores = config.get("params", None)  # None caso não tenha parâmetros
+
+    db_config = {
+        'user': os.getenv("USER_DB"),
+        'password': os.getenv("PASSWORD_DB"),
+        'host': os.getenv("HOST_DB"),
+        'database': os.getenv("DATABASE_DB")
     }
+
     try:
-        conn = connect(**config)
+        conn = connect(**db_config)
         cursor = conn.cursor()
 
         if valores:
-            cursor.execute(instrucaoSQL, (valores,) if not isinstance(valores, tuple) else valores)
+            # garante que valores é uma tupla
+            cursor.execute(instrucaoSQL, valores if isinstance(valores, tuple) else (valores,))
         else:
             cursor.execute(instrucaoSQL)
 
