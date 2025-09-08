@@ -129,10 +129,10 @@ def main():
             print(saida)
             break
 
-        except ValueError:
+        # except ValueError:
 
-            print("Por favor, digite um número válido.")
-            print(menu_resumido)
+        #     print("Por favor, digite um número válido.")
+        #     print(menu_resumido)
 
     # Atualiza status ATM para inativo já que o ATM parou de enviar dados para o ATM
     Fazer_consulta_banco({
@@ -245,7 +245,7 @@ def procurar_mac_address():
     return {
 
         "mac_address": "00:1A:2B:3C:4D:5E",
-        "ip_address": "192.168.1.100"
+        "ip_address": "192.168.1.1"
 
     }
 
@@ -294,10 +294,11 @@ def procura_parametros_atm(dados):
     resultado = Fazer_consulta_banco({
 
         "query": """
-            SELECT p.idParametro, c.funcaoMonitorada, c.unidadeMedida, p.limite
-            FROM Parametro as p
-            JOIN Componente as c ON p.fkComponente = c.idComponente
-            WHERE p.fkAtm = %s;
+            SELECT ac.idAtmComponente, c.funcaoMonitorada, c.unidadeMedida, p.limite
+            From AtmComponente as ac 
+            JOIN Parametro as p on ac.idAtmComponente = p.fkAtmComponente
+            JOIN componente as c on ac.fkComponente = c.idComponente
+            WHERE ac.fkAtm = %s;
         """,
         "params": (dados.get('idAtm'),)
 
@@ -323,7 +324,7 @@ def inserir_registro(valor, fk_parametro):
 
     resultado = Fazer_consulta_banco({
 
-        "query": "INSERT INTO Registro (valor, horario, fkParametro) VALUES (%s, NOW(), %s);",
+        "query": "INSERT INTO Registro (valor, horario, fkAtmComponente) VALUES (%s, NOW(), %s);",
         "params": (valor, fk_parametro)
 
     })
@@ -335,8 +336,16 @@ def inserir_registro(valor, fk_parametro):
 # =========================================================
 # FUNÇÕES DE ALERTA 
 # =========================================================
+def horario_atual():
+    """
+    Retorna o horário atual formatado como string: YYYY-MM-DD HH:MM:SS
+    """
+    agora = datetime.now()
+    return agora.strftime("%Y-%m-%d %H:%M:%S")
+
 
 def processar_leitura_com_alerta(fkParametro, tipo, valor, limite):
+    horario = horario_atual()
     """
     Processa o registro de leitura de um parâmetro e gerencia alertas.
 
@@ -368,7 +377,7 @@ def processar_leitura_com_alerta(fkParametro, tipo, valor, limite):
         "query": """
             SELECT idAlerta, nivel, dataHoraInicio
             FROM Alerta
-            WHERE fkParametro = %s AND tipoAlerta = %s AND dataHoraFinal IS NULL
+            WHERE fkAtmComponente = %s AND tipoAlerta = %s AND dataHoraFinal IS NULL
             ORDER BY dataHoraInicio DESC
             LIMIT 1
         """,
@@ -390,10 +399,10 @@ def processar_leitura_com_alerta(fkParametro, tipo, valor, limite):
             Fazer_consulta_banco({
 
                 "query": """
-                    INSERT INTO Alerta (fkParametro, tipoAlerta, nivel,valor,  dataHoraInicio)
-                    VALUES (%s, %s, %s,%s, NOW())
+                    INSERT INTO Alerta (fkAtmComponente, tipoAlerta, nivel,valorInicial,  dataHoraInicio)
+                    VALUES (%s, %s, %s,%s, %s)
                 """,
-                "params": (fkParametro, tipo, nivel, valor)
+                "params": (fkParametro, tipo, nivel, valor, horario)
 
             })
 
@@ -406,18 +415,18 @@ def processar_leitura_com_alerta(fkParametro, tipo, valor, limite):
 
                 Fazer_consulta_banco({
 
-                    "query": "UPDATE Alerta SET dataHoraFinal = NOW() WHERE idAlerta = %s",
-                    "params": (alerta_aberto[0],)
+                    "query": "UPDATE Alerta SET dataHoraFinal = %s, valorFinal = %s WHERE idAlerta = %s",
+                    "params": (horario, alerta_aberto[0],valor)
                 
                 })
                 Fazer_consulta_banco({
                 
                     "query": """
-                        INSERT INTO Alerta (fkParametro, tipoAlerta, nivel,valor,  dataHoraInicio)
-                        VALUES (%s, %s, %s,%s, NOW())
+                        INSERT INTO Alerta (fkAtmComponente, tipoAlerta, nivel,valorInicial,  dataHoraInicio)
+                        VALUES (%s, %s, %s,%s, %s)
                     """,
                 
-                    "params": (fkParametro, tipo, nivel, valor)
+                    "params": (fkParametro, tipo, nivel, valor, horario)
                 })
                 print(f"  Alerta atualizado criando NOVO registro para {tipo} (nível: {nivel})")
 
@@ -426,8 +435,8 @@ def processar_leitura_com_alerta(fkParametro, tipo, valor, limite):
 
             Fazer_consulta_banco({
                 
-                "query": "UPDATE Alerta SET dataHoraFinal = NOW() WHERE idAlerta = %s",
-                "params": (alerta_aberto[0],)
+                "query": "UPDATE Alerta SET dataHoraFinal = %s, valorFinal = %s WHERE idAlerta = %s",
+                "params": (horario, alerta_aberto[0],valor)
             
             })
             print(f"  Alerta FECHADO para {tipo}")
