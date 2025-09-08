@@ -142,6 +142,20 @@ def main():
 
     })
     print("\n Status Atm atualizado para INATIVO")
+    horario = horario_atual()
+
+    consulta = Fazer_consulta_banco({
+
+        "query": """
+                    INSERT INTO Alerta (fkAtm, tipoAlerta, nivel, dataHoraInicio)
+                    VALUES (%s, %s, %s,%s)
+                """,
+        "params": (informacoes_atm.get('idAtm'),
+                    'Atm está off-line', 'critico', horario)
+
+        })
+    print(consulta)
+    print("Alerta atm gerado")
 
 # =========================================================
 # LOOP DE MONITORAMENTO -  
@@ -176,7 +190,27 @@ def coletar_dados():
         "params": (informacoes_atm_local.get('idAtm'),)
 
     })
+    verificar_alerta_atm= Fazer_consulta_banco({
+        "query": """
+            SELECT idAlerta 
+            FROM Alerta
+            WHERE fkAtm = %s  AND dataHoraFinal IS NULL
+            ORDER BY dataHoraInicio DESC
+            LIMIT 1
+        """,
+        "params": (informacoes_atm_local.get('idAtm'),)
+
+    })
     print("\n Status Atm atualizado para ATIVO ")
+
+    horario = horario_atual()
+    if len(verificar_alerta_atm) == 1:
+        Fazer_consulta_banco({
+                     "query": "UPDATE Alerta SET dataHoraFinal = %s  WHERE idAlerta = %s",
+                    "params": (horario, verificar_alerta_atm[0][0],)
+            })
+        print("status Alerta atualizado")
+
 
     while coletar_dados_continuo:
 
@@ -297,7 +331,7 @@ def procura_parametros_atm(dados):
             SELECT ac.idAtmComponente, c.funcaoMonitorada, c.unidadeMedida, p.limite
             From AtmComponente as ac 
             JOIN Parametro as p on ac.idAtmComponente = p.fkAtmComponente
-            JOIN componente as c on ac.fkComponente = c.idComponente
+            JOIN Componente as c on ac.fkComponente = c.idComponente
             WHERE ac.fkAtm = %s;
         """,
         "params": (dados.get('idAtm'),)
@@ -413,12 +447,15 @@ def processar_leitura_com_alerta(fkParametro, tipo, valor, limite):
 
             if alerta_aberto[1] != nivel or alerta_expirado(data_hora_inicio):
 
-                Fazer_consulta_banco({
+                consulta = Fazer_consulta_banco({
 
                     "query": "UPDATE Alerta SET dataHoraFinal = %s, valorFinal = %s WHERE idAlerta = %s",
                     "params": (horario, alerta_aberto[0],valor)
                 
                 })
+                print("====================================================")
+                print(consulta)
+                print("====================================================")
                 Fazer_consulta_banco({
                 
                     "query": """
@@ -433,12 +470,17 @@ def processar_leitura_com_alerta(fkParametro, tipo, valor, limite):
     else:
         if alerta_aberto:
 
-            Fazer_consulta_banco({
+            consulta = Fazer_consulta_banco({
                 
                 "query": "UPDATE Alerta SET dataHoraFinal = %s, valorFinal = %s WHERE idAlerta = %s",
-                "params": (horario, alerta_aberto[0],valor)
+                "params": (horario, valor, alerta_aberto[0])
             
             })
+            print(consulta)
+            print("------------------+++++++++++++++++++++++++")
+            print(horario)
+            print(alerta_aberto[0])
+            print(valor)
             print(f"  Alerta FECHADO para {tipo}")
 
 
