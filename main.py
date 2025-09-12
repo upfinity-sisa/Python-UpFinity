@@ -129,10 +129,6 @@ def main():
             print(saida)
             break
 
-        # except ValueError:
-
-        #     print("Por favor, digite um número válido.")
-        #     print(menu_resumido)
 
     # Atualiza status ATM para inativo já que o ATM parou de enviar dados para o ATM
     Fazer_consulta_banco({
