@@ -11,7 +11,8 @@ config = {
   'user': os.getenv("USER_DB"), 
   'password': os.getenv("PASSWORD_DB"),
   'host': os.getenv("HOST_DB"),
-  'database': os.getenv("DATABASE_DB")
+  'database': os.getenv("DATABASE_DB"),
+  'port': os.getenv("PORT_DB")
 }
 
 def carregar_parametros(idEmpresa, fkTipoComponente, fkTipoAlerta):
