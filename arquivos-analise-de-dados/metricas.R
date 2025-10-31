@@ -23,8 +23,8 @@ alerta_grave_cpu <- round(media_cpu + 2 * desvio_cpu, 2)
 alerta_moderado_ram <- round(media_ram + desvio_ram, 2)
 alerta_grave_ram <- round(media_ram + 2 * desvio_ram, 2)
 
-alerta_moderado_disco <- round(media_disco + desvio_disco, 2)
-alerta_grave_disco <- round(media_disco + 2 * desvio_disco, 2)
+alerta_moderado_disco <- round(media_disco + desvio_disco, 2)+2
+alerta_grave_disco <- round(media_disco + 2 * desvio_disco, 2)+4
 
 print("Alerta moderado para CPU: ")
 print(alerta_moderado_cpu)
@@ -38,7 +38,6 @@ print("Alerta moderado para Disco: ")
 print(alerta_moderado_disco)
 print("Alerta grave para Disco: ")
 print(alerta_grave_disco)
-
 
 
 #Exibindo o boxplot dos dados
@@ -146,7 +145,7 @@ plot(df_capturas$disco, type = "l", col = "#2db2b7", lwd = 2,
      main = "Uso do Disco conforme o tempo",
      xlab = "Tempo (capturas)",
      ylab = "Uso do Disco (%)",
-     ylim = c(min(df_capturas$disco), alerta_grave_disco))
+     ylim = c(50, 65))
 
 abline(h = alerta_moderado_disco, col = "yellow", lwd = 2, lty = 2)
 abline(h = alerta_grave_disco, col = "red", lwd = 2, lty = 2)
