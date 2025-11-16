@@ -96,8 +96,8 @@ def verificar_cadastrar_componente(idComponente, fkAtm, fkTipoComponente):
     db = connect(**config)
     if (db.is_connected):
       with db.cursor() as cursor:
-        query = f"SELECT idComponente FROM Componente WHERE idComponente = %s AND fkAtm = %s"
-        cursor.execute(query, (idComponente, fkAtm))
+        query = f"SELECT idComponente FROM Componente WHERE idComponente = %s AND fkAtm = %s AND fkTipoComponente = %s"
+        cursor.execute(query, (idComponente, fkAtm, fkTipoComponente))
         result = cursor.fetchone()
 
         if result:
@@ -110,6 +110,17 @@ def verificar_cadastrar_componente(idComponente, fkAtm, fkTipoComponente):
   
   except Error as e:
     print(f"Erro em verificar ou cadastrar o componente: {e}")
+
+def atualizar_status(idAtm, status):
+  try:
+    db = connect(**config)
+    if (db.is_connected):
+      with db.cursor() as cursor:
+        query = f"UPDATE Atm SET statusMonitoramento = %s WHERE idAtm = %s"
+        cursor.execute(query, (status, idAtm))
+        db.commit()
+  except Error as e:
+    print(f"Erro ao atualizar status do atm: {e}")
 
 ipv4 = capturar_ipv4()
 
@@ -153,27 +164,33 @@ for i in range(20):
   if porcentagem_cpu > limite_critico_cpu:
     print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA CRITICO DE CPU!")
     inserir_alerta(1, idAtm)
+    atualizar_status(idAtm, 1)
   elif porcentagem_cpu > limite_importante_cpu:
     print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA MODERADO DE CPU!")
     inserir_alerta(2, idAtm)
+    atualizar_status(idAtm, 2)
   else:
     print(f"Porcentagem de uso da CPU: {porcentagem_cpu}%")
 
   if porcentagem_ram > limite_critico_ram:
     print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA CRÍTICO DE MEMÓRIA RAM!")
     inserir_alerta(1, idAtm)
+    atualizar_status(idAtm, 1)
   elif porcentagem_ram > limite_importante_ram:
     print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA MODERADO DE MEMÓRIA RAM!")
     inserir_alerta(2, idAtm)
+    atualizar_status(idAtm, 2)
   else:
     print(f"Porcentagem de uso da RAM: {porcentagem_ram}%")
     
   if porcentagem_disco > limite_critico_disco:
     print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA CRÍTICO DE USO DE DISCO!")
     inserir_alerta(1, idAtm)
+    atualizar_status(idAtm, 1)
   elif porcentagem_disco > limite_importante_disco:
     print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA MODERADO DE MEMÓRIA RAM!")
     inserir_alerta(2, idAtm)
+    atualizar_status(idAtm, 2)
   else:
     print(f"Porcentagem de uso do DISCO: {porcentagem_disco}%")
     
