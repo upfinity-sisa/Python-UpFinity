@@ -5,6 +5,10 @@ import os
 import datetime
 from time import sleep
 
+import os
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
+
 load_dotenv()
 
 config = {
@@ -59,14 +63,7 @@ def inserir_alerta(idTipoAlerta, idAtm):
   except Error as e:
     print(f"Error to connect with MySQL - {e}")
 
-limite_critico_cpu = carregar_parametros(1, 1, 1)[0][0]
-limite_importante_cpu = carregar_parametros(1, 1, 2)[0][0]
 
-limite_critico_ram = carregar_parametros(1, 2, 1)[0][0]
-limite_importante_ram = carregar_parametros(1, 2, 2)[0][0]
-
-limite_critico_disco = carregar_parametros(1, 3, 1)[0][0]
-limite_importante_disco = carregar_parametros(1, 3, 2)[0][0]
 
 def capturar_ipv4():
   interfaces = p.net_if_addrs()
@@ -122,6 +119,39 @@ def atualizar_status(idAtm, status):
   except Error as e:
     print(f"Erro ao atualizar status do atm: {e}")
 
+
+slack_token = os.environ["SLACK_BOT_TOKEN"]
+client = WebClient(token=slack_token)
+
+def buscar_empresa_atm(idAtm):
+  try:
+    db = connect(**config)
+    if (db.is_connected):
+      with db.cursor() as cursor:
+        query = f"SELECT fkEmpresa FROM Atm WHERE idAtm = %s"
+        cursor.execute(query, (idAtm,))
+        resultado = cursor.fetchone()
+        return resultado[0] if resultado else None
+
+  except Error as e:
+    print(f"Error to connect with MySQL - {e}")
+    
+
+
+def buscar_canal(idEmpresa):
+  try:
+    db = connect(**config)
+    if (db.is_connected):
+      with db.cursor() as cursor:
+        query = f"SELECT idSlack FROM Empresa WHERE idEmpresa = %s"
+        cursor.execute(query, (idEmpresa,))
+        resultado = cursor.fetchone()
+        return resultado[0] if resultado else None
+
+  except Error as e:
+    print(f"Error to connect with MySQL - {e}")
+
+
 ipv4 = capturar_ipv4()
 
 idAtm = buscar_atm(ipv4)
@@ -135,12 +165,28 @@ id_cpu = verificar_cadastrar_componente(1 , idAtm, 1)
 id_ram = verificar_cadastrar_componente(2, idAtm, 2)
 id_disco = verificar_cadastrar_componente(3, idAtm, 3)
 
+idEmpresa = buscar_empresa_atm(idAtm)
+print(f"ID EMPRESA ENVIADO: {idEmpresa}")
+
+limite_critico_cpu = carregar_parametros(idEmpresa, 1, 1)[0][0]
+limite_importante_cpu = carregar_parametros(idEmpresa, 1, 2)[0][0]
+
+limite_critico_ram = carregar_parametros(idEmpresa, 2, 1)[0][0]
+limite_importante_ram = carregar_parametros(idEmpresa, 2, 2)[0][0]
+
+limite_critico_disco = carregar_parametros(idEmpresa, 3, 1)[0][0]
+limite_importante_disco = carregar_parametros(idEmpresa, 3, 2)[0][0]
+
+idCanalSlack = buscar_canal(idEmpresa)
+print(f"CANAL SLACK: {idCanalSlack}")
+
 atualizar_status(idAtm, 0)
+
 
 print("Componentes do seu ATM foram cadastrados com sucesso!")
 
 for i in range(20):
-  porcentagem_cpu = p.cpu_percent(interval=1, percpu=False) 
+  porcentagem_cpu = p.cpu_percent(interval=1, percpu=False)
   porcentagem_ram = p.virtual_memory().percent
   porcentagem_disco = p.disk_usage("/").percent
   hora_registro = datetime.datetime.now().strftime("%H:%M:%S")
@@ -167,10 +213,12 @@ for i in range(20):
     print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA CRITICO DE CPU!")
     inserir_alerta(1, idAtm)
     atualizar_status(idAtm, 1)
+    client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: CPU do ATM {idAtm} em {porcentagem_cpu}%!")
   elif porcentagem_cpu > limite_importante_cpu:
     print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA MODERADO DE CPU!")
     inserir_alerta(2, idAtm)
     atualizar_status(idAtm, 2)
+    client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: CPU do ATM {idAtm} em {porcentagem_cpu}%!")
   else:
     print(f"Porcentagem de uso da CPU: {porcentagem_cpu}%")
 
@@ -178,10 +226,12 @@ for i in range(20):
     print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA CRÍTICO DE MEMÓRIA RAM!")
     inserir_alerta(1, idAtm)
     atualizar_status(idAtm, 1)
+    client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: RAM do ATM {idAtm} em {porcentagem_ram}%!")
   elif porcentagem_ram > limite_importante_ram:
     print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA MODERADO DE MEMÓRIA RAM!")
     inserir_alerta(2, idAtm)
     atualizar_status(idAtm, 2)
+    client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: RAM do ATM {idAtm} em {porcentagem_ram}%!")
   else:
     print(f"Porcentagem de uso da RAM: {porcentagem_ram}%")
     
@@ -189,10 +239,12 @@ for i in range(20):
     print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA CRÍTICO DE USO DE DISCO!")
     inserir_alerta(1, idAtm)
     atualizar_status(idAtm, 1)
+    client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: DISCO do ATM {idAtm} em {porcentagem_disco}%!")
   elif porcentagem_disco > limite_importante_disco:
     print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA MODERADO DE MEMÓRIA RAM!")
     inserir_alerta(2, idAtm)
     atualizar_status(idAtm, 2)
+    client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: DISCO do ATM {idAtm} em {porcentagem_disco}%!")
   else:
     print(f"Porcentagem de uso do DISCO: {porcentagem_disco}%")
     
