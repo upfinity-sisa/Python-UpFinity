@@ -135,10 +135,12 @@ id_cpu = verificar_cadastrar_componente(1 , idAtm, 1)
 id_ram = verificar_cadastrar_componente(2, idAtm, 2)
 id_disco = verificar_cadastrar_componente(3, idAtm, 3)
 
+atualizar_status(idAtm, 0)
+
 print("Componentes do seu ATM foram cadastrados com sucesso!")
 
 for i in range(20):
-  porcentagem_cpu = p.cpu_percent(interval=1, percpu=False)
+  porcentagem_cpu = p.cpu_percent(interval=1, percpu=False) + 90
   porcentagem_ram = p.virtual_memory().percent
   porcentagem_disco = p.disk_usage("/").percent
   hora_registro = datetime.datetime.now().strftime("%H:%M:%S")
