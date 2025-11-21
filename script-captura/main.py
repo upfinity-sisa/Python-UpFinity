@@ -241,6 +241,9 @@ for i in range(20):
   id_captura_frequencia_cpu = inserir_metricas(id_cpu, idAtm, frequencia_cpu)
   id_captura_temperatura_cpu = inserir_metricas(id_cpu, idAtm, temperatura_cpu)
 
+  print(f"Frequencia da CPU: {frequencia_cpu}MHz")
+  print(f"Temperatura da CPU: {temperatura_cpu}ºC")
+
   if porcentagem_cpu > limite_critico_cpu:
     print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA CRITICO DE CPU!")
     status_cpu = 1
