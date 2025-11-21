@@ -1,3 +1,4 @@
 dotenv
 mysql-connector-python
 psutil
+slack_sdk
