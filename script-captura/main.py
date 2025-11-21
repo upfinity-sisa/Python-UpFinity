@@ -16,57 +16,54 @@ config = {
 }
 
 def carregar_parametros(idEmpresa, fkTipoComponente, fkTipoAlerta):
-  try:
-    db = connect(**config)
-    if (db.is_connected):
-      with db.cursor() as cursor:
-        query = f"SELECT limiteMax FROM Parametro WHERE fkEmpresa = %s AND fkTipoComponente = %s AND fkTipoAlerta = %s"
-        cursor.execute(query, (idEmpresa,fkTipoComponente,fkTipoAlerta,))
-        resultado = cursor.fetchall()
-        return resultado
-    
-      db.close()
-
-  except Error as e:
-    print(f"Error to connect with MySQL - {e}")
-
+    db = None
+    try:
+        db = connect(**config)
+        if db.is_connected():
+            with db.cursor() as cursor:
+                query = f"SELECT limiteMax FROM Parametro WHERE fkEmpresa = %s AND fkTipoComponente = %s AND fkTipoAlerta = %s"
+                cursor.execute(query, (idEmpresa, fkTipoComponente, fkTipoAlerta,))
+                resultado = cursor.fetchall()
+                return resultado
+    except Error as e:
+        print(f"Error to connect with MySQL - {e}")
+    finally:
+        if db and db.is_connected():
+            db.close()
+            
 def inserir_metricas(idComponente, fkAtm, valor):
-  try:
-    db = connect(**config)
-    if (db.is_connected):
-      with db.cursor() as cursor:
-        query = f"INSERT INTO Captura (fkComponente, fkAtm, valor, horario) VALUES (%s, %s, %s, now());"
-        cursor.execute(query, (idComponente, fkAtm, valor,))
-        db.commit()
-      
-      db.close()
-
-  except Error as e:
-    print(f"INSERIR METRICAS - Error to connect with MySQL - {e}")
-
-
-def inserir_alerta(idTipoAlerta, idAtm):
-  try:
-    db = connect(**config)
-    if (db.is_connected):
-      with db.cursor() as cursor:
-        query = f"INSERT INTO Alerta (fkTipoAlerta, fkCaptura) VALUES (%s, (SELECT idCaptura FROM Captura WHERE fkAtm = %s ORDER BY idCaptura DESC LIMIT 1))"
-        cursor.execute(query, (idTipoAlerta, idAtm))
-        db.commit()
-      
-      db.close()
-
-  except Error as e:
-    print(f"Error to connect with MySQL - {e}")
-
-limite_critico_cpu = carregar_parametros(1, 1, 1)[0][0]
-limite_importante_cpu = carregar_parametros(1, 1, 2)[0][0]
-
-limite_critico_ram = carregar_parametros(1, 2, 1)[0][0]
-limite_importante_ram = carregar_parametros(1, 2, 2)[0][0]
-
-limite_critico_disco = carregar_parametros(1, 3, 1)[0][0]
-limite_importante_disco = carregar_parametros(1, 3, 2)[0][0]
+    try:
+        db = connect(**config)
+        if db.is_connected():
+            with db.cursor() as cursor:
+                query = "INSERT INTO Captura (fkComponente, fkAtm, valor, horario) VALUES (%s, %s, %s, now())"
+                cursor.execute(query, (idComponente, fkAtm, valor))
+                db.commit()
+                
+                id_gerado = cursor.lastrowid 
+                return id_gerado
+                
+    except Error as e:
+        print(f"INSERIR METRICAS - Erro: {e}")
+        return None
+    finally:
+        if 'db' in locals() and db.is_connected():
+            db.close()
+            
+def inserir_alerta(idTipoAlerta, idCapturaEspecifica):
+    try:
+        db = connect(**config)
+        if db.is_connected():
+            with db.cursor() as cursor:
+                query = "INSERT INTO Alerta (fkTipoAlerta, fkCaptura) VALUES (%s, %s)"
+                cursor.execute(query, (idTipoAlerta, idCapturaEspecifica))
+                db.commit()
+                
+    except Error as e:
+        print(f"Erro ao inserir alerta: {e}")
+    finally:
+        if 'db' in locals() and db.is_connected():
+            db.close()
 
 def capturar_ipv4():
   interfaces = p.net_if_addrs()
@@ -76,21 +73,22 @@ def capturar_ipv4():
         return e.address
   return None
   
-
-def buscar_atm(ipv4):
-  try:
-    db = connect(**config)
-    if (db.is_connected):
-      with db.cursor() as cursor:
-        query = f"SELECT idAtm FROM Atm WHERE IP = %s"
-        cursor.execute(query, (ipv4,))
-        resulta = cursor.fetchone()
+def buscar_dados_atm(ipv4):
+    try:
+        db = connect(**config)
+        if (db.is_connected):
+            with db.cursor() as cursor:
+                query = "SELECT idAtm, fkEmpresa FROM Atm WHERE IP = %s"
+                cursor.execute(query, (ipv4,))
+                resulta = cursor.fetchone()
+                return resulta 
         
-        return resulta[0] if resulta else None
-        
-  except Error as e:
-    print(f"Buscar o ATM - Error to connect with MySQL - {e}")
-
+    except Error as e:
+        print(f"Buscar dados do ATM - Error to connect with MySQL - {e}")
+    finally:
+        if 'db' in locals() and db.is_connected():
+            db.close()
+            
 def verificar_cadastrar_componente(idComponente, fkAtm, fkTipoComponente):
   try:
     db = connect(**config)
@@ -122,9 +120,47 @@ def atualizar_status(idAtm, status):
   except Error as e:
     print(f"Erro ao atualizar status do atm: {e}")
 
+def verificar_alerta_existente(idAtm, idComponente, idTipoAlerta):
+    try:
+        db = connect(**config)
+        if db.is_connected():
+            with db.cursor() as cursor:
+                query = """
+                    SELECT a.idAlerta 
+                    FROM Alerta a
+                    JOIN Captura c ON a.fkCaptura = c.idCaptura
+                    WHERE c.fkAtm = %s 
+                    AND c.fkComponente = %s 
+                    AND a.fkTipoAlerta = %s 
+                    AND a.statusAlerta = 1
+                """
+                cursor.execute(query, (idAtm, idComponente, idTipoAlerta))
+                resultado = cursor.fetchone()
+                return True if resultado else False
+    except Error as e:
+        print(f"Erro ao verificar alerta existente: {e}")
+        return False
+    finally:
+        if 'db' in locals() and db.is_connected():
+            db.close()
+            
 ipv4 = capturar_ipv4()
 
-idAtm = buscar_atm(ipv4)
+dadosAtm = buscar_dados_atm(ipv4)
+
+idAtm = dadosAtm[0]
+idEmpresa = dadosAtm[1]
+
+limite_critico_cpu = carregar_parametros(idEmpresa, 1, 1)[0][0]
+limite_moderado_cpu = carregar_parametros(idEmpresa, 1, 2)[0][0]
+
+limite_critico_ram = carregar_parametros(idEmpresa, 2, 1)[0][0]
+limite_moderado_ram = carregar_parametros(idEmpresa, 2, 2)[0][0]
+
+limite_critico_disco = carregar_parametros(idEmpresa, 3, 1)[0][0]
+limite_moderado_disco = carregar_parametros(idEmpresa, 3, 2)[0][0]
+
+
 
 if not idAtm:
   print(f"Nenhum ATM foi encontrado com esse ipv4 - {ipv4}")
@@ -143,6 +179,10 @@ for i in range(20):
   porcentagem_disco = p.disk_usage("/").percent
   hora_registro = datetime.datetime.now().strftime("%H:%M:%S")
   
+  status_cpu = 0
+  status_ram = 0
+  status_disco = 0
+  
   os.system("clear")  
   print("""
   ██╗   ██╗██████╗ ███████╗██╗███╗   ██╗██╗████████╗██╗   ██╗
@@ -157,42 +197,76 @@ for i in range(20):
   print(f"Hora do registro: {hora_registro}")
   print(f"-="*20)
 
-  inserir_metricas(id_cpu, idAtm, porcentagem_cpu)
-  inserir_metricas(id_ram, idAtm, porcentagem_ram)
-  inserir_metricas(id_disco, idAtm, porcentagem_disco)
+  id_captura_cpu = inserir_metricas(id_cpu, idAtm, porcentagem_cpu)
+  id_captura_ram = inserir_metricas(id_ram, idAtm, porcentagem_ram)
+  id_captura_disco = inserir_metricas(id_disco, idAtm, porcentagem_disco)
 
   if porcentagem_cpu > limite_critico_cpu:
     print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA CRITICO DE CPU!")
-    inserir_alerta(1, idAtm)
-    atualizar_status(idAtm, 1)
-  elif porcentagem_cpu > limite_importante_cpu:
+    status_cpu = 1
+    
+    if not verificar_alerta_existente(idAtm, id_cpu, 1):
+      inserir_alerta(1, id_captura_cpu)
+      atualizar_status(idAtm, 1)
+    
+  elif porcentagem_cpu > limite_moderado_cpu:
     print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA MODERADO DE CPU!")
-    inserir_alerta(2, idAtm)
-    atualizar_status(idAtm, 2)
+    status_cpu = 2
+    
+    if not verificar_alerta_existente(idAtm, id_cpu, 2):
+      inserir_alerta(2, id_captura_cpu)
+      atualizar_status(idAtm, 2)
+      
   else:
     print(f"Porcentagem de uso da CPU: {porcentagem_cpu}%")
 
   if porcentagem_ram > limite_critico_ram:
     print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA CRÍTICO DE MEMÓRIA RAM!")
-    inserir_alerta(1, idAtm)
-    atualizar_status(idAtm, 1)
-  elif porcentagem_ram > limite_importante_ram:
+    status_ram = 1
+    
+    if not verificar_alerta_existente(idAtm, id_ram, 1):
+      inserir_alerta(1, id_captura_ram)
+      atualizar_status(idAtm, 1)
+      
+  elif porcentagem_ram > limite_moderado_ram:
     print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA MODERADO DE MEMÓRIA RAM!")
-    inserir_alerta(2, idAtm)
-    atualizar_status(idAtm, 2)
+    status_ram = 2
+    
+    if not verificar_alerta_existente(idAtm, id_ram, 2):
+      inserir_alerta(2, id_captura_ram)
+      atualizar_status(idAtm, 2)
+
   else:
     print(f"Porcentagem de uso da RAM: {porcentagem_ram}%")
     
   if porcentagem_disco > limite_critico_disco:
     print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA CRÍTICO DE USO DE DISCO!")
-    inserir_alerta(1, idAtm)
-    atualizar_status(idAtm, 1)
-  elif porcentagem_disco > limite_importante_disco:
-    print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA MODERADO DE MEMÓRIA RAM!")
-    inserir_alerta(2, idAtm)
-    atualizar_status(idAtm, 2)
+    status_disco = 1
+    
+    if not verificar_alerta_existente(idAtm, id_disco, 1):
+      inserir_alerta(1, id_captura_disco)
+      atualizar_status(idAtm, 1)
+
+  elif porcentagem_disco > limite_moderado_disco:
+    print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA MODERADO DE DISCO!")
+    status_disco = 2
+    
+    if not verificar_alerta_existente(idAtm, id_disco, 2):
+      inserir_alerta(2, id_captura_disco)
+      atualizar_status(idAtm, 2)
+      
   else:
     print(f"Porcentagem de uso do DISCO: {porcentagem_disco}%")
+    
+  status_final_atm = 0
+
+  if status_cpu == 1 or status_ram == 1 or status_disco == 1:
+    status_final_atm = 1
+    
+  elif status_cpu == 2 or status_ram == 2 or status_disco == 2:
+    status_final_atm = 2
+   
+  atualizar_status(idAtm, status_final_atm)  
     
   print(f"-="*20)
   sleep(1)
