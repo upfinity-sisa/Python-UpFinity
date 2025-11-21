@@ -238,8 +238,8 @@ for i in range(20):
   id_captura_disco = inserir_metricas(id_disco, idAtm, porcentagem_disco)
 
   # capturas do brenokas =)
-  id_captura_frequencia_cpu = inserir_metricas(id_cpu, idAtm, frequencia_cpu)
-  id_captura_temperatura_cpu = inserir_metricas(id_cpu, idAtm, temperatura_cpu)
+  id_captura_frequencia_cpu = inserir_metricas(5, idAtm, frequencia_cpu)
+  id_captura_temperatura_cpu = inserir_metricas(6, idAtm, temperatura_cpu)
 
   print(f"Frequencia da CPU: {frequencia_cpu}MHz")
   print(f"Temperatura da CPU: {temperatura_cpu}ºC")
