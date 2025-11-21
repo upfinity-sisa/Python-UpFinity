@@ -209,7 +209,12 @@ for i in range(20):
   porcentagem_ram = p.virtual_memory().percent
   porcentagem_disco = p.disk_usage("/").percent
   hora_registro = datetime.datetime.now().strftime("%H:%M:%S")
-  
+
+  # capturas do brenokas =)
+  frequencia_cpu = p.cpu_freq().current
+  if p.LINUX:
+     temperatura_cpu = p.sensors_temperatures(fahrenheit=False).get('coretemp')[0][1]
+
   status_cpu = 0
   status_ram = 0
   status_disco = 0
@@ -231,6 +236,10 @@ for i in range(20):
   id_captura_cpu = inserir_metricas(id_cpu, idAtm, porcentagem_cpu)
   id_captura_ram = inserir_metricas(id_ram, idAtm, porcentagem_ram)
   id_captura_disco = inserir_metricas(id_disco, idAtm, porcentagem_disco)
+
+  # capturas do brenokas =)
+  id_captura_frequencia_cpu = inserir_metricas(id_cpu, idAtm, frequencia_cpu)
+  id_captura_temperatura_cpu = inserir_metricas(id_cpu, idAtm, temperatura_cpu)
 
   if porcentagem_cpu > limite_critico_cpu:
     print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA CRITICO DE CPU!")
