@@ -111,14 +111,6 @@ def atualizar_status(db, idAtm, status):
     
 def verificar_alerta_existente(db, idAtm, idComponente, idTipoAlerta):
     try:
-      # print(f"""
-      #           SELECT a.idAlerta 
-      #           FROM Alerta a
-      #           JOIN Captura c ON a.fkCaptura = c.idCaptura
-      #           WHERE c.fkAtm = {idAtm} 
-      #           AND c.fkComponente = {idComponente} 
-      #           AND a.fkTipoAlerta = {idTipoAlerta}
-      #           AND a.statusAlerta = 1""")
       with db.cursor() as cursor:
             query = """
                 SELECT a.idAlerta 
@@ -177,6 +169,8 @@ limite_moderado_disco = carregar_parametros(idEmpresa, 3, 2)[0][0]
 id_cpu = verificar_cadastrar_componente(1 , idAtm, 1)
 id_ram = verificar_cadastrar_componente(2, idAtm, 2)
 id_disco = verificar_cadastrar_componente(3, idAtm, 3)
+id_temp_cpu = verificar_cadastrar_componente(5, idAtm, 5)
+id_freq_cpu = verificar_cadastrar_componente(6, idAtm, 6)
 print("Componentes do seu ATM foram cadastrados com sucesso!")
 
 # idCanalSlack = buscar_canal(idEmpresa)
@@ -200,6 +194,12 @@ try:
         if porcentagem_disco > 100:
           porcentagem_disco = 100
           
+          
+        # capturas do brenokas =)
+        frequencia_cpu = p.cpu_freq().current
+        if p.LINUX:
+          temperatura_cpu = p.sensors_temperatures(fahrenheit=False).get('coretemp')[0][1]
+
         status_cpu = 0
         status_ram = 0
         status_disco = 0
@@ -221,6 +221,13 @@ try:
         id_captura_cpu = inserir_metricas(conexao_global, id_cpu, idAtm, porcentagem_cpu)
         id_captura_ram = inserir_metricas(conexao_global, id_ram, idAtm, porcentagem_ram)
         id_captura_disco = inserir_metricas(conexao_global, id_disco, idAtm, porcentagem_disco)
+
+        # capturas do brenokas =)
+        id_captura_frequencia_cpu = inserir_metricas(conexao_global, id_freq_cpu, idAtm, frequencia_cpu)
+        id_captura_temperatura_cpu = inserir_metricas(conexao_global, id_temp_cpu, idAtm, temperatura_cpu)
+
+        print(f"Frequencia da CPU: {frequencia_cpu}MHz")
+        print(f"Temperatura da CPU: {temperatura_cpu}ºC")
 
         if porcentagem_cpu > limite_critico_cpu:
           print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA CRITICO DE CPU!")
