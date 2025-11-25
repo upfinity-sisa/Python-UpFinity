@@ -33,39 +33,25 @@ def carregar_parametros(idEmpresa, fkTipoComponente, fkTipoAlerta):
         if db and db.is_connected():
             db.close()
             
-def inserir_metricas(idComponente, fkAtm, valor):
+def inserir_metricas(db, idComponente, fkAtm, valor):
     try:
-        db = connect(**config)
-        if db.is_connected():
-            with db.cursor() as cursor:
-                query = "INSERT INTO Captura (fkComponente, fkAtm, valor, horario) VALUES (%s, %s, %s, now())"
-                cursor.execute(query, (idComponente, fkAtm, valor))
-                db.commit()
-                
-                id_gerado = cursor.lastrowid 
-                return id_gerado
-                
+        with db.cursor() as cursor:
+            query = "INSERT INTO Captura (fkComponente, fkAtm, valor, horario) VALUES (%s, %s, %s, now())"
+            cursor.execute(query, (idComponente, fkAtm, valor))
+            db.commit()
+            return cursor.lastrowid 
     except Error as e:
         print(f"INSERIR METRICAS - Erro: {e}")
         return None
-    finally:
-        if 'db' in locals() and db.is_connected():
-            db.close()
             
-def inserir_alerta(idTipoAlerta, idCapturaEspecifica):
+def inserir_alerta(db, idTipoAlerta, idCapturaEspecifica):
     try:
-        db = connect(**config)
-        if db.is_connected():
-            with db.cursor() as cursor:
-                query = "INSERT INTO Alerta (fkTipoAlerta, fkCaptura) VALUES (%s, %s)"
-                cursor.execute(query, (idTipoAlerta, idCapturaEspecifica))
-                db.commit()
-                
+        with db.cursor() as cursor:
+            query = "INSERT INTO Alerta (fkTipoAlerta, fkCaptura) VALUES (%s, %s)"
+            cursor.execute(query, (idTipoAlerta, idCapturaEspecifica))
+            db.commit()
     except Error as e:
         print(f"Erro ao inserir alerta: {e}")
-    finally:
-        if 'db' in locals() and db.is_connected():
-            db.close()
 
 def capturar_ipv4():
   interfaces = p.net_if_addrs()
@@ -76,6 +62,7 @@ def capturar_ipv4():
   return None
   
 def buscar_dados_atm(ipv4):
+    db = None
     try:
         db = connect(**config)
         if (db.is_connected):
@@ -84,14 +71,14 @@ def buscar_dados_atm(ipv4):
                 cursor.execute(query, (ipv4,))
                 resulta = cursor.fetchone()
                 return resulta 
-        
     except Error as e:
         print(f"Buscar dados do ATM - Error to connect with MySQL - {e}")
     finally:
-        if 'db' in locals() and db.is_connected():
+        if db and db.is_connected():
             db.close()
             
 def verificar_cadastrar_componente(idComponente, fkAtm, fkTipoComponente):
+  db = None
   try:
     db = connect(**config)
     if (db.is_connected):
@@ -107,45 +94,49 @@ def verificar_cadastrar_componente(idComponente, fkAtm, fkTipoComponente):
         cursor.execute(insert, (idComponente,fkAtm, fkTipoComponente))
         db.commit()
         return idComponente
-  
   except Error as e:
     print(f"Erro em verificar ou cadastrar o componente: {e}")
+  finally:
+      if db and db.is_connected():
+          db.close()
 
-def atualizar_status(idAtm, status):
+def atualizar_status(db, idAtm, status):
   try:
-    db = connect(**config)
-    if (db.is_connected):
       with db.cursor() as cursor:
         query = f"UPDATE Atm SET statusMonitoramento = %s WHERE idAtm = %s"
         cursor.execute(query, (status, idAtm))
         db.commit()
   except Error as e:
     print(f"Erro ao atualizar status do atm: {e}")
-
-def verificar_alerta_existente(idAtm, idComponente, idTipoAlerta):
+    
+def verificar_alerta_existente(db, idAtm, idComponente, idTipoAlerta):
     try:
-        db = connect(**config)
-        if db.is_connected():
-            with db.cursor() as cursor:
-                query = """
-                    SELECT a.idAlerta 
-                    FROM Alerta a
-                    JOIN Captura c ON a.fkCaptura = c.idCaptura
-                    WHERE c.fkAtm = %s 
-                    AND c.fkComponente = %s 
-                    AND a.fkTipoAlerta = %s 
-                    AND a.statusAlerta = 1
-                """
-                cursor.execute(query, (idAtm, idComponente, idTipoAlerta))
-                resultado = cursor.fetchone()
-                return True if resultado else False
+      # print(f"""
+      #           SELECT a.idAlerta 
+      #           FROM Alerta a
+      #           JOIN Captura c ON a.fkCaptura = c.idCaptura
+      #           WHERE c.fkAtm = {idAtm} 
+      #           AND c.fkComponente = {idComponente} 
+      #           AND a.fkTipoAlerta = {idTipoAlerta}
+      #           AND a.statusAlerta = 1""")
+      with db.cursor() as cursor:
+            query = """
+                SELECT a.idAlerta 
+                FROM Alerta a
+                JOIN Captura c ON a.fkCaptura = c.idCaptura
+                WHERE c.fkAtm = %s 
+                AND c.fkComponente = %s 
+                AND a.fkTipoAlerta = %s 
+                AND a.statusAlerta = 1
+            """
+            cursor.execute(query, (idAtm, idComponente, idTipoAlerta))
+            resultado = cursor.fetchone()
+            return True if resultado else False
+            
     except Error as e:
-        print(f"Erro ao verificar alerta existente: {e}")
-        return False
-    finally:
-        if 'db' in locals() and db.is_connected():
-            db.close()
-
+        print(f"Erro ao verificar alerta: {e}")
+        return True
+      
 def buscar_canal(idEmpresa):
   try:
     db = connect(**config)
@@ -159,8 +150,8 @@ def buscar_canal(idEmpresa):
   except Error as e:
     print(f"Error to connect with MySQL - {e}")
 
-slack_token = os.environ["SLACK_BOT_TOKEN"]
-client = WebClient(token=slack_token)
+# slack_token = os.environ["SLACK_BOT_TOKEN"]
+# client = WebClient(token=slack_token)
 
 ipv4 = capturar_ipv4()
 
@@ -169,6 +160,11 @@ dadosAtm = buscar_dados_atm(ipv4)
 idAtm = dadosAtm[0]
 idEmpresa = dadosAtm[1]
 
+if not dadosAtm:
+    print(f"ATM não encontrado no banco para este IPV4 -> {ipv4}")
+    print("Encerrando...")
+    exit()
+  
 limite_critico_cpu = carregar_parametros(idEmpresa, 1, 1)[0][0]
 limite_moderado_cpu = carregar_parametros(idEmpresa, 1, 2)[0][0]
 
@@ -178,132 +174,133 @@ limite_moderado_ram = carregar_parametros(idEmpresa, 2, 2)[0][0]
 limite_critico_disco = carregar_parametros(idEmpresa, 3, 1)[0][0]
 limite_moderado_disco = carregar_parametros(idEmpresa, 3, 2)[0][0]
 
-if not idAtm:
-  print(f"Nenhum ATM foi encontrado com esse ipv4 - {ipv4}")
-  print("Encerrando...")
-  exit()
-
 id_cpu = verificar_cadastrar_componente(1 , idAtm, 1)
 id_ram = verificar_cadastrar_componente(2, idAtm, 2)
 id_disco = verificar_cadastrar_componente(3, idAtm, 3)
-
-limite_critico_cpu = carregar_parametros(idEmpresa, 1, 1)[0][0]
-limite_importante_cpu = carregar_parametros(idEmpresa, 1, 2)[0][0]
-
-limite_critico_ram = carregar_parametros(idEmpresa, 2, 1)[0][0]
-limite_importante_ram = carregar_parametros(idEmpresa, 2, 2)[0][0]
-
-limite_critico_disco = carregar_parametros(idEmpresa, 3, 1)[0][0]
-limite_importante_disco = carregar_parametros(idEmpresa, 3, 2)[0][0]
-
-idCanalSlack = buscar_canal(idEmpresa)
-print(f"CANAL SLACK: {idCanalSlack}")
-
-atualizar_status(idAtm, 0)
-
-
 print("Componentes do seu ATM foram cadastrados com sucesso!")
 
-for i in range(20):
-  porcentagem_cpu = p.cpu_percent(interval=1, percpu=False)
-  porcentagem_ram = p.virtual_memory().percent
-  porcentagem_disco = p.disk_usage("/").percent
-  hora_registro = datetime.datetime.now().strftime("%H:%M:%S")
-  
-  status_cpu = 0
-  status_ram = 0
-  status_disco = 0
-  
-  os.system("clear")  
-  print("""
-  ██╗   ██╗██████╗ ███████╗██╗███╗   ██╗██╗████████╗██╗   ██╗
-██║   ██║██╔══██╗██╔════╝██║████╗  ██║██║╚══██╔══╝╚██╗ ██╔╝
-██║   ██║██████╔╝█████╗  ██║██╔██╗ ██║██║   ██║    ╚████╔╝ 
-██║   ██║██╔═══╝ ██╔══╝  ██║██║╚██╗██║██║   ██║     ╚██╔╝  
-╚██████╔╝██║     ██║     ██║██║ ╚████║██║   ██║      ██║   
- ╚═════╝ ╚═╝     ╚═╝     ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝      ╚═╝                                                   
-          """)
+# idCanalSlack = buscar_canal(idEmpresa)
+# print(f"CANAL SLACK: {idCanalSlack}")
 
-  print("Registro inserido com sucesso!")
-  print(f"Hora do registro: {hora_registro}")
-  print(f"-="*20)
-
-  id_captura_cpu = inserir_metricas(id_cpu, idAtm, porcentagem_cpu)
-  id_captura_ram = inserir_metricas(id_ram, idAtm, porcentagem_ram)
-  id_captura_disco = inserir_metricas(id_disco, idAtm, porcentagem_disco)
-
-  if porcentagem_cpu > limite_critico_cpu:
-    print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA CRITICO DE CPU!")
-    status_cpu = 1
-    
-    if not verificar_alerta_existente(idAtm, id_cpu, 1):
-      inserir_alerta(1, id_captura_cpu)
-      atualizar_status(idAtm, 1)
-      client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: CPU do ATM {idAtm} em {porcentagem_cpu}%!")
-    
-  elif porcentagem_cpu > limite_moderado_cpu:
-    print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA MODERADO DE CPU!")
-    status_cpu = 2
-    
-    if not verificar_alerta_existente(idAtm, id_cpu, 2):
-      inserir_alerta(2, id_captura_cpu)
-      atualizar_status(idAtm, 2)
-      client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: CPU do ATM {idAtm} em {porcentagem_cpu}%!")
+try:
+    conexao_global = connect(**config)
+    if conexao_global.is_connected():
       
-  else:
-    print(f"Porcentagem de uso da CPU: {porcentagem_cpu}%")
+      print("Conectado ao Banco para monitoramento!")
+      for i in range(20):
+        porcentagem_cpu = p.cpu_percent(interval=1, percpu=False) + 90
+        porcentagem_ram = p.virtual_memory().percent  + 90
+        porcentagem_disco = p.disk_usage("/").percent + 90
+        hora_registro = datetime.datetime.now().strftime("%H:%M:%S")
+        
+        if porcentagem_cpu > 100:
+          porcentagem_cpu = 100
+        if porcentagem_ram > 100:
+          porcentagem_ram = 100
+        if porcentagem_disco > 100:
+          porcentagem_disco = 100
+          
+        status_cpu = 0
+        status_ram = 0
+        status_disco = 0
+        
+        os.system("clear")  
+        print("""
+        ██╗   ██╗██████╗ ███████╗██╗███╗   ██╗██╗████████╗██╗   ██╗
+      ██║   ██║██╔══██╗██╔════╝██║████╗  ██║██║╚══██╔══╝╚██╗ ██╔╝
+      ██║   ██║██████╔╝█████╗  ██║██╔██╗ ██║██║   ██║    ╚████╔╝ 
+      ██║   ██║██╔═══╝ ██╔══╝  ██║██║╚██╗██║██║   ██║     ╚██╔╝  
+      ╚██████╔╝██║     ██║     ██║██║ ╚████║██║   ██║      ██║   
+      ╚═════╝ ╚═╝     ╚═╝     ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝      ╚═╝                                                   
+                """)
 
-  if porcentagem_ram > limite_critico_ram:
-    print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA CRÍTICO DE MEMÓRIA RAM!")
-    status_ram = 1
-    
-    if not verificar_alerta_existente(idAtm, id_ram, 1):
-      inserir_alerta(1, id_captura_ram)
-      atualizar_status(idAtm, 1)
-      client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: RAM do ATM {idAtm} em {porcentagem_ram}%!")
+        print("Registro inserido com sucesso!")
+        print(f"Hora do registro: {hora_registro}")
+        print(f"-="*20)
+
+        id_captura_cpu = inserir_metricas(conexao_global, id_cpu, idAtm, porcentagem_cpu)
+        id_captura_ram = inserir_metricas(conexao_global, id_ram, idAtm, porcentagem_ram)
+        id_captura_disco = inserir_metricas(conexao_global, id_disco, idAtm, porcentagem_disco)
+
+        if porcentagem_cpu > limite_critico_cpu:
+          print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA CRITICO DE CPU!")
+          status_cpu = 1
+          
+          if not verificar_alerta_existente(conexao_global,idAtm, id_cpu, 1):
+            inserir_alerta(conexao_global ,1, id_captura_cpu)
+            atualizar_status(conexao_global ,idAtm, 1)
+            # client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: CPU do ATM {idAtm} em {porcentagem_cpu}%!")
+          
+        elif porcentagem_cpu > limite_moderado_cpu:
+          print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA MODERADO DE CPU!")
+          status_cpu = 2
+          
+          if not verificar_alerta_existente(conexao_global,idAtm, id_cpu, 2):
+            inserir_alerta(conexao_global ,2, id_captura_cpu)
+            atualizar_status(conexao_global ,idAtm, 2)
+            # client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: CPU do ATM {idAtm} em {porcentagem_cpu}%!")
+            
+        else:
+          print(f"Porcentagem de uso da CPU: {porcentagem_cpu}%")
+
+        if porcentagem_ram > limite_critico_ram:
+          print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA CRÍTICO DE MEMÓRIA RAM!")
+          status_ram = 1
+          
+          if not verificar_alerta_existente(conexao_global,idAtm, id_ram, 1):
+            inserir_alerta(conexao_global ,1, id_captura_ram)
+            atualizar_status(conexao_global ,idAtm, 1)
+            # client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: RAM do ATM {idAtm} em {porcentagem_ram}%!")
+            
+        elif porcentagem_ram > limite_moderado_ram:
+          print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA MODERADO DE MEMÓRIA RAM!")
+          status_ram = 2
+          
+          if not verificar_alerta_existente(conexao_global,idAtm, id_ram, 2):
+            inserir_alerta(conexao_global ,2, id_captura_ram)
+            atualizar_status(conexao_global ,idAtm, 2)
+            # client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: RAM do ATM {idAtm} em {porcentagem_ram}%!")
+
+        else:
+          print(f"Porcentagem de uso da RAM: {porcentagem_ram}%")
+          
+        if porcentagem_disco > limite_critico_disco:
+          print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA CRÍTICO DE USO DE DISCO!")
+          status_disco = 1
+          
+          if not verificar_alerta_existente(conexao_global,idAtm, id_disco, 1):
+            inserir_alerta(conexao_global ,1, id_captura_disco)
+            atualizar_status(conexao_global ,idAtm, 1)
+            # client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: DISCO do ATM {idAtm} em {porcentagem_disco}%!")
+
+        elif porcentagem_disco > limite_moderado_disco:
+          print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA MODERADO DE DISCO!")
+          status_disco = 2
+          
+          if not verificar_alerta_existente(conexao_global,idAtm, id_disco, 2):
+            inserir_alerta(conexao_global ,2, id_captura_disco)
+            atualizar_status(conexao_global ,idAtm, 2)
+            # client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: DISCO do ATM {idAtm} em {porcentagem_disco}%!")
+            
+        else:
+          print(f"Porcentagem de uso do DISCO: {porcentagem_disco}%")
+          
+        status_final_atm = 0
+
+        if status_cpu == 1 or status_ram == 1 or status_disco == 1:
+          status_final_atm = 1
+          
+        elif status_cpu == 2 or status_ram == 2 or status_disco == 2:
+          status_final_atm = 2
+        
+        atualizar_status(conexao_global ,idAtm, status_final_atm)  
+          
+        print(f"-="*20)
+        sleep(1)
       
-  elif porcentagem_ram > limite_moderado_ram:
-    print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA MODERADO DE MEMÓRIA RAM!")
-    status_ram = 2
-    
-    if not verificar_alerta_existente(idAtm, id_ram, 2):
-      inserir_alerta(2, id_captura_ram)
-      atualizar_status(idAtm, 2)
-      client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: RAM do ATM {idAtm} em {porcentagem_ram}%!")
-
-  else:
-    print(f"Porcentagem de uso da RAM: {porcentagem_ram}%")
-    
-  if porcentagem_disco > limite_critico_disco:
-    print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA CRÍTICO DE USO DE DISCO!")
-    status_disco = 1
-    
-    if not verificar_alerta_existente(idAtm, id_disco, 1):
-      inserir_alerta(1, id_captura_disco)
-      atualizar_status(idAtm, 1)
-      client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: DISCO do ATM {idAtm} em {porcentagem_disco}%!")
-
-  elif porcentagem_disco > limite_moderado_disco:
-    print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA MODERADO DE DISCO!")
-    status_disco = 2
-    
-    if not verificar_alerta_existente(idAtm, id_disco, 2):
-      inserir_alerta(2, id_captura_disco)
-      atualizar_status(idAtm, 2)
-      client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: DISCO do ATM {idAtm} em {porcentagem_disco}%!")
-      
-  else:
-    print(f"Porcentagem de uso do DISCO: {porcentagem_disco}%")
-    
-  status_final_atm = 0
-
-  if status_cpu == 1 or status_ram == 1 or status_disco == 1:
-    status_final_atm = 1
-    
-  elif status_cpu == 2 or status_ram == 2 or status_disco == 2:
-    status_final_atm = 2
-   
-  atualizar_status(idAtm, status_final_atm)  
-    
-  print(f"-="*20)
-  sleep(1)
+except Error as e:
+    print(f"Erro fatal na conexão: {e}")
+finally:
+    if 'conexao_global' in locals() and conexao_global.is_connected():
+        conexao_global.close()
+        print("Conexão encerrada.")
