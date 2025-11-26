@@ -223,7 +223,7 @@ try:
         # capturas do brenokas =)
         id_captura_frequencia_cpu = inserir_metricas(conexao_global, id_freq_cpu, idAtm, frequencia_cpu)
         if p.LINUX:
-          temperatura_cpu = p.sensors_temperatures(fahrenheit=False).get('coretemp')[0][1]
+          temperatura_cpu = p.sensors_temperatures(fahrenheit=False).get('nvme')[0][1]
           id_captura_temperatura_cpu = inserir_metricas(conexao_global, id_temp_cpu, idAtm, temperatura_cpu)
           print(f"Temperatura da CPU: {temperatura_cpu}ºC")
 
