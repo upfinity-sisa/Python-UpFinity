@@ -91,7 +91,6 @@ vt_arqs = [
     "/usr/bin/ls",
     "/usr/bin/ps",
     "/usr/bin/top",
-    "/usr/bin/netstat",
     "/usr/bin/find",
     "/lib/x86_64-linux-gnu/libc.so.6",
     "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"
