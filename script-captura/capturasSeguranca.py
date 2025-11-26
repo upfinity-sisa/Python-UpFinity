@@ -92,7 +92,7 @@ vt_arqs = [
     "/usr/bin/ps",
     "/usr/bin/top",
     "/usr/bin/find",
-    "/home/breno-upfinity/seg",
+    "/home/breno-upfinity/seg/arq.txt",
     "/lib/x86_64-linux-gnu/libc.so.6",
     "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"
 ]
