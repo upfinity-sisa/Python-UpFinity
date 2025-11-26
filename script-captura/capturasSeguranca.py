@@ -78,7 +78,6 @@ vt_arqs = [
     "/etc/resolv.conf",
     "/bin/bash",
     "/bin/sh",
-    "/home/cat/teste/up.txt",
     "/usr/bin/sudo",
     "/usr/bin/passwd",
     "/usr/bin/chsh",
