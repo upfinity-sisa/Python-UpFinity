@@ -182,9 +182,9 @@ try:
       
       print("Conectado ao Banco para monitoramento!")
       for i in range(1000):
-        porcentagem_cpu = p.cpu_percent(interval=1, percpu=False) + 90
-        porcentagem_ram = p.virtual_memory().percent  + 90
-        porcentagem_disco = p.disk_usage("/").percent + 90
+        porcentagem_cpu = p.cpu_percent(interval=1, percpu=False)
+        porcentagem_ram = p.virtual_memory().percent
+        porcentagem_disco = p.disk_usage("/").percent
         hora_registro = datetime.datetime.now().strftime("%H:%M:%S")
         
         # if porcentagem_cpu > 100:
