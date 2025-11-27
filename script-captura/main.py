@@ -181,7 +181,7 @@ try:
     if conexao_global.is_connected():
       
       print("Conectado ao Banco para monitoramento!")
-      for i in range(20):
+      for i in range(1000):
         porcentagem_cpu = p.cpu_percent(interval=1, percpu=False) + 90
         porcentagem_ram = p.virtual_memory().percent  + 90
         porcentagem_disco = p.disk_usage("/").percent + 90
