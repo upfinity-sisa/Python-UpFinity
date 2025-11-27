@@ -187,12 +187,12 @@ try:
         porcentagem_disco = p.disk_usage("/").percent + 90
         hora_registro = datetime.datetime.now().strftime("%H:%M:%S")
         
-        if porcentagem_cpu > 100:
-          porcentagem_cpu = 100
-        if porcentagem_ram > 100:
-          porcentagem_ram = 100
-        if porcentagem_disco > 100:
-          porcentagem_disco = 100
+        # if porcentagem_cpu > 100:
+        #   porcentagem_cpu = 100
+        # if porcentagem_ram > 100:
+        #   porcentagem_ram = 100
+        # if porcentagem_disco > 100:
+        #   porcentagem_disco = 100
           
           
         # capturas do brenokas =)
