@@ -152,8 +152,8 @@ def buscar_canal(idEmpresa):
   except Error as e:
     print(f"Error to connect with MySQL - {e}")
 
-# slack_token = os.environ["SLACK_BOT_TOKEN"]
-# client = WebClient(token=slack_token)
+slack_token = os.environ["SLACK_BOT_TOKEN"]
+client = WebClient(token=slack_token)
 
 ipv4 = capturar_ipv4()
 
@@ -191,24 +191,22 @@ try:
     if conexao_global.is_connected():
       
       print("Conectado ao Banco para monitoramento!")
-      for i in range(20):
-        porcentagem_cpu = p.cpu_percent(interval=1, percpu=False) + 90
-        porcentagem_ram = p.virtual_memory().percent  + 90
-        porcentagem_disco = p.disk_usage("/").percent + 90
+      for i in range(1000):
+        porcentagem_cpu = p.cpu_percent(interval=1, percpu=False)
+        porcentagem_ram = p.virtual_memory().percent
+        porcentagem_disco = p.disk_usage("/").percent
         hora_registro = datetime.datetime.now().strftime("%H:%M:%S")
         
-        if porcentagem_cpu > 100:
-          porcentagem_cpu = 100
-        if porcentagem_ram > 100:
-          porcentagem_ram = 100
-        if porcentagem_disco > 100:
-          porcentagem_disco = 100
+        # if porcentagem_cpu > 100:
+        #   porcentagem_cpu = 100
+        # if porcentagem_ram > 100:
+        #   porcentagem_ram = 100
+        # if porcentagem_disco > 100:
+        #   porcentagem_disco = 100
           
           
         # capturas do brenokas =)
         frequencia_cpu = p.cpu_freq().current
-        # if p.LINUX:
-        #   temperatura_cpu = p.sensors_temperatures(fahrenheit=False).get('coretemp')[0][1]
 
         status_cpu = 0
         status_ram = 0
@@ -234,15 +232,16 @@ try:
 
         # capturas do brenokas =)
         id_captura_frequencia_cpu = inserir_metricas(conexao_global, id_freq_cpu, idAtm, frequencia_cpu)
-        # if p.LINUX:
-        #   id_captura_temperatura_cpu = inserir_metricas(conexao_global, id_temp_cpu, idAtm, temperatura_cpu)
-        #   print(f"Temperatura da CPU: {temperatura_cpu}ºC")
+        if p.LINUX:
+          temperatura_cpu = p.sensors_temperatures(fahrenheit=False).get('nvme')[0][1]
+          id_captura_temperatura_cpu = inserir_metricas(conexao_global, id_temp_cpu, idAtm, temperatura_cpu)
+          print(f"Temperatura da CPU: {temperatura_cpu}ºC")
 
         print(f"Frequencia da CPU: {frequencia_cpu}MHz")
 
         if porcentagem_cpu > limite_critico_cpu:
           print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA CRITICO DE CPU!")
-          # client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: CPU do ATM {idAtm} em {porcentagem_cpu}%!")
+          client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: CPU do ATM {idAtm} em {porcentagem_cpu}%!")
 
           status_cpu = 1
           
@@ -252,7 +251,7 @@ try:
           
         elif porcentagem_cpu > limite_moderado_cpu:
           print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA MODERADO DE CPU!")
-          # client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: CPU do ATM {idAtm} em {porcentagem_cpu}%!")
+          client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: CPU do ATM {idAtm} em {porcentagem_cpu}%!")
 
           status_cpu = 2
           
@@ -265,7 +264,7 @@ try:
 
         if porcentagem_ram > limite_critico_ram:
           print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA CRÍTICO DE MEMÓRIA RAM!")
-          # client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: RAM do ATM {idAtm} em {porcentagem_ram}%!")
+          client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: RAM do ATM {idAtm} em {porcentagem_ram}%!")
 
           status_ram = 1
           
@@ -275,7 +274,7 @@ try:
             
         elif porcentagem_ram > limite_moderado_ram:
           print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA MODERADO DE MEMÓRIA RAM!")
-          # client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: RAM do ATM {idAtm} em {porcentagem_ram}%!")
+          client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: RAM do ATM {idAtm} em {porcentagem_ram}%!")
 
           status_ram = 2
           
@@ -288,7 +287,7 @@ try:
           
         if porcentagem_disco > limite_critico_disco:
           print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA CRÍTICO DE USO DE DISCO!")
-          # client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: DISCO do ATM {idAtm} em {porcentagem_disco}%!")
+          client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: DISCO do ATM {idAtm} em {porcentagem_disco}%!")
 
           status_disco = 1
           
@@ -298,7 +297,7 @@ try:
 
         elif porcentagem_disco > limite_moderado_disco:
           print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA MODERADO DE DISCO!")
-          # client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: DISCO do ATM {idAtm} em {porcentagem_disco}%!")
+          client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: DISCO do ATM {idAtm} em {porcentagem_disco}%!")
 
           status_disco = 2
           
