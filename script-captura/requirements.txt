@@ -3,4 +3,3 @@ mysql-connector-python
 psutil
 slack_sdk
 requests
-json
