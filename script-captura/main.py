@@ -7,6 +7,7 @@ from time import sleep
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 import requests
+import json
 
 load_dotenv()
 
@@ -152,10 +153,41 @@ def buscar_canal(idEmpresa):
   except Error as e:
     print(f"Error to connect with MySQL - {e}")
 
+def criar_chamado(key, ocorrido, descricao, issue_type="Bug", prioridade="High"):
+  url = f"{os.getenv('JIRA_URL')}/rest/api/3/issue"
+  auth = (os.getenv("JIRA_EMAIL"), os.getenv("JIRA_API_TOKEN"))
+
+  payload = {
+      "fields": {
+            "project": {"key": key},
+            "summary": ocorrido,
+            "description": descricao,
+            "issuetype": {"name": issue_type},
+            "priority": {"name": prioridade}
+      }
+  }
+   
+  headers = {"Content-Type": "application/json"}
+
+  response = requests.post(
+      url,
+      data=json.dumps(payload),
+      auth=auth,
+      headers=headers
+    )
+  
+  if response.status_code == 201:
+     return response.json()["key"]
+  else:
+      print("Erro ao criar ticket no Jira:", response.text)
+      return None
+
+  
 slack_token = os.environ["SLACK_BOT_TOKEN"]
 client = WebClient(token=slack_token)
 
 ipv4 = capturar_ipv4()
+print("MEU IPV4 CAPTURADO:", ipv4)
 
 dadosAtm = buscar_dados_atm(ipv4)
 
@@ -192,7 +224,7 @@ try:
       
       print("Conectado ao Banco para monitoramento!")
       for i in range(1000):
-        porcentagem_cpu = p.cpu_percent(interval=1, percpu=False)
+        porcentagem_cpu = p.cpu_percent(interval=1, percpu=False) + 90
         porcentagem_ram = p.virtual_memory().percent
         porcentagem_disco = p.disk_usage("/").percent
         hora_registro = datetime.datetime.now().strftime("%H:%M:%S")
@@ -242,7 +274,27 @@ try:
         if porcentagem_cpu > limite_critico_cpu:
           print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA CRITICO DE CPU!")
           client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: CPU do ATM {idAtm} em {porcentagem_cpu}%!")
+          ocorrido = f"Alerta crítico: CPU {porcentagem_cpu}% no ATM {idAtm}"
+          descricao = (
+            f"Uso de CPU atingiu {porcentagem_cpu}%.\n"
+            f"ATM: {idAtm}\n"
+            f"IP: {ipv4}\n"
+            f"Horário: {hora_registro}"
+          )
 
+          chamado = criar_chamado(
+             key=os.getenv("JIRA_PROJECT_KEY"),
+             ocorrido=ocorrido,
+             descricao=descricao,
+             issue_type="Incidente",
+             prioridade="Alta"
+          )
+
+          if chamado:
+                  client.chat_postMessage(
+                    channel=idCanalSlack,
+                    text=f"📌 Chamado criado automaticamente no Jira: {chamado}"
+                  )
           status_cpu = 1
           
           if not verificar_alerta_existente(conexao_global,idAtm, id_cpu, 1):
@@ -252,6 +304,27 @@ try:
         elif porcentagem_cpu > limite_moderado_cpu:
           print(f"Porcentagem de uso da CPU: {porcentagem_cpu}% - ALERTA MODERADO DE CPU!")
           client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: CPU do ATM {idAtm} em {porcentagem_cpu}%!")
+          ocorrido = f"Alerta moderado: CPU {porcentagem_cpu}% no ATM {idAtm}"
+          descricao = (
+            f"Uso de CPU atingiu {porcentagem_cpu}%.\n"
+            f"ATM: {idAtm}\n"
+            f"IP: {ipv4}\n"
+            f"Horário: {hora_registro}"
+          )
+
+          chamado = criar_chamado(
+             key=os.getenv("JIRA_PROJECT_KEY"),
+             ocorrido=ocorrido,
+             descricao=descricao,
+             issue_type="Incidente",
+             prioridade="Alta"
+          )
+
+          if chamado:
+                  client.chat_postMessage(
+                    channel=idCanalSlack,
+                    text=f"📌 Chamado criado automaticamente no Jira: {chamado}"
+                  )
 
           status_cpu = 2
           
@@ -265,6 +338,27 @@ try:
         if porcentagem_ram > limite_critico_ram:
           print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA CRÍTICO DE MEMÓRIA RAM!")
           client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: RAM do ATM {idAtm} em {porcentagem_ram}%!")
+          ocorrido = f"Alerta crítico: RAM {porcentagem_ram}% no ATM {idAtm}"
+          descricao = (
+            f"Uso de RAM atingiu {porcentagem_ram}%.\n"
+            f"ATM: {idAtm}\n"
+            f"IP: {ipv4}\n"
+            f"Horário: {hora_registro}"
+          )
+
+          chamado = criar_chamado(
+             key=os.getenv("JIRA_PROJECT_KEY"),
+             ocorrido=ocorrido,
+             descricao=descricao,
+             issue_type="Incidente",
+             prioridade="Alta"
+          )
+
+          if chamado:
+                  client.chat_postMessage(
+                    channel=idCanalSlack,
+                    text=f"📌 Chamado criado automaticamente no Jira: {chamado}"
+                  )
 
           status_ram = 1
           
@@ -275,6 +369,27 @@ try:
         elif porcentagem_ram > limite_moderado_ram:
           print(f"Porcentagem de uso da RAM: {porcentagem_ram}% - ALERTA MODERADO DE MEMÓRIA RAM!")
           client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: RAM do ATM {idAtm} em {porcentagem_ram}%!")
+          ocorrido = f"Alerta moderado: RAM {porcentagem_ram}% no ATM {idAtm}"
+          descricao = (
+            f"Uso de RAM atingiu {porcentagem_ram}%.\n"
+            f"ATM: {idAtm}\n"
+            f"IP: {ipv4}\n"
+            f"Horário: {hora_registro}"
+          )
+
+          chamado = criar_chamado(
+             key=os.getenv("JIRA_PROJECT_KEY"),
+             ocorrido=ocorrido,
+             descricao=descricao,
+             issue_type="Incidente",
+             prioridade="Alta"
+          )
+
+          if chamado:
+                  client.chat_postMessage(
+                    channel=idCanalSlack,
+                    text=f"📌 Chamado criado automaticamente no Jira: {chamado}"
+                  )
 
           status_ram = 2
           
@@ -288,6 +403,27 @@ try:
         if porcentagem_disco > limite_critico_disco:
           print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA CRÍTICO DE USO DE DISCO!")
           client.chat_postMessage(channel=idCanalSlack, text=f"🚨 ALERTA CRÍTICO: DISCO do ATM {idAtm} em {porcentagem_disco}%!")
+          ocorrido = f"Alerta crítico: DISCO {porcentagem_disco}% no ATM {idAtm}"
+          descricao = (
+            f"Uso do DISCO atingiu {porcentagem_disco}%.\n"
+            f"ATM: {idAtm}\n"
+            f"IP: {ipv4}\n"
+            f"Horário: {hora_registro}"
+          )
+
+          chamado = criar_chamado(
+             key=os.getenv("JIRA_PROJECT_KEY"),
+             ocorrido=ocorrido,
+             descricao=descricao,
+             issue_type="Incidente",
+             prioridade="Alta"
+          )
+
+          if chamado:
+                  client.chat_postMessage(
+                    channel=idCanalSlack,
+                    text=f"📌 Chamado criado automaticamente no Jira: {chamado}"
+                  )
 
           status_disco = 1
           
@@ -298,6 +434,27 @@ try:
         elif porcentagem_disco > limite_moderado_disco:
           print(f"Porcentagem de uso do DISCO: {porcentagem_disco}% - ALERTA MODERADO DE DISCO!")
           client.chat_postMessage(channel=idCanalSlack, text=f"⚠️ ALERTA MODERADO: DISCO do ATM {idAtm} em {porcentagem_disco}%!")
+          ocorrido = f"Alerta moderado: DISCO {porcentagem_disco}% no ATM {idAtm}"
+          descricao = (
+            f"Uso do DISCO atingiu {porcentagem_disco}%.\n"
+            f"ATM: {idAtm}\n"
+            f"IP: {ipv4}\n"
+            f"Horário: {hora_registro}"
+          )
+
+          chamado = criar_chamado(
+             key=os.getenv("JIRA_PROJECT_KEY"),
+             ocorrido=ocorrido,
+             descricao=descricao,
+             issue_type="Incidente",
+             prioridade="Alta"
+          )
+
+          if chamado:
+                  client.chat_postMessage(
+                    channel=idCanalSlack,
+                    text=f"📌 Chamado criado automaticamente no Jira: {chamado}"
+                  )
 
           status_disco = 2
           
