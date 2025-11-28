@@ -161,7 +161,18 @@ def criar_chamado(key, ocorrido, descricao, issue_type_id="10012", priority_id="
         "fields": {
             "project": {"key": key},
             "summary": ocorrido,
-            "description": descricao,
+            "description": {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {"type": "text", "text": descricao}
+                        ]
+                    }
+                ]
+            },
             "issuetype": {"id": issue_type_id},
             "priority": {"id": priority_id}
         }
@@ -176,6 +187,7 @@ def criar_chamado(key, ocorrido, descricao, issue_type_id="10012", priority_id="
     else:
         print("Erro ao criar ticket no Jira:", response.text)
         return None
+
 
   
 slack_token = os.environ["SLACK_BOT_TOKEN"]
