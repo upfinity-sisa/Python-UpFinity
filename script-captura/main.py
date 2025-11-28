@@ -153,34 +153,29 @@ def buscar_canal(idEmpresa):
   except Error as e:
     print(f"Error to connect with MySQL - {e}")
 
-def criar_chamado(key, ocorrido, descricao, issue_type="Bug", prioridade="High"):
-  url = f"{os.getenv('JIRA_URL')}/rest/api/3/issue"
-  auth = (os.getenv("JIRA_EMAIL"), os.getenv("JIRA_API_TOKEN"))
+def criar_chamado(key, ocorrido, descricao, issue_type_id="10012", priority_id="2"):
+    url = f"{os.getenv('JIRA_URL')}/rest/api/3/issue"
+    auth = (os.getenv("JIRA_EMAIL"), os.getenv("JIRA_API_TOKEN"))
 
-  payload = {
-      "fields": {
+    payload = {
+        "fields": {
             "project": {"key": key},
             "summary": ocorrido,
             "description": descricao,
-            "issuetype": {"name": issue_type},
-            "priority": {"name": prioridade}
-      }
-  }
-   
-  headers = {"Content-Type": "application/json"}
+            "issuetype": {"id": issue_type_id},
+            "priority": {"id": priority_id}
+        }
+    }
 
-  response = requests.post(
-      url,
-      data=json.dumps(payload),
-      auth=auth,
-      headers=headers
-    )
-  
-  if response.status_code == 201:
-     return response.json()["key"]
-  else:
-      print("Erro ao criar ticket no Jira:", response.text)
-      return None
+    headers = {"Content-Type": "application/json"}
+
+    response = requests.post(url, json=payload, auth=auth, headers=headers)
+
+    if response.status_code == 201:
+        return response.json()["key"]
+    else:
+        print("Erro ao criar ticket no Jira:", response.text)
+        return None
 
   
 slack_token = os.environ["SLACK_BOT_TOKEN"]
@@ -286,8 +281,8 @@ try:
              key=os.getenv("JIRA_PROJECT_KEY"),
              ocorrido=ocorrido,
              descricao=descricao,
-             issue_type="Incidente",
-             prioridade="Alta"
+             issue_type_id="10012",
+             priority_id="2"
           )
 
           if chamado:
@@ -316,8 +311,8 @@ try:
              key=os.getenv("JIRA_PROJECT_KEY"),
              ocorrido=ocorrido,
              descricao=descricao,
-             issue_type="Incidente",
-             prioridade="Alta"
+             issue_type_id="10012",
+             priority_id="2"
           )
 
           if chamado:
@@ -350,8 +345,8 @@ try:
              key=os.getenv("JIRA_PROJECT_KEY"),
              ocorrido=ocorrido,
              descricao=descricao,
-             issue_type="Incidente",
-             prioridade="Alta"
+             issue_type_id="10012",
+             priority_id="2"
           )
 
           if chamado:
@@ -381,8 +376,8 @@ try:
              key=os.getenv("JIRA_PROJECT_KEY"),
              ocorrido=ocorrido,
              descricao=descricao,
-             issue_type="Incidente",
-             prioridade="Alta"
+             issue_type_id="10012",
+             priority_id="2"
           )
 
           if chamado:
@@ -415,8 +410,8 @@ try:
              key=os.getenv("JIRA_PROJECT_KEY"),
              ocorrido=ocorrido,
              descricao=descricao,
-             issue_type="Incidente",
-             prioridade="Alta"
+             issue_type_id="10012",
+             priority_id="2"
           )
 
           if chamado:
@@ -446,8 +441,8 @@ try:
              key=os.getenv("JIRA_PROJECT_KEY"),
              ocorrido=ocorrido,
              descricao=descricao,
-             issue_type="Incidente",
-             prioridade="Alta"
+             issue_type_id="10012",
+             priority_id="2"
           )
 
           if chamado:
