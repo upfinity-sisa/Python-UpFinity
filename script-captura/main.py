@@ -153,7 +153,7 @@ def buscar_canal(idEmpresa):
   except Error as e:
     print(f"Error to connect with MySQL - {e}")
 
-def criar_chamado(key, ocorrido, descricao, issue_type_id="10012", priority_id="2"):
+def criar_chamado(key, ocorrido, descricao, issue_type_id="10001", priority_id="2"):
     url = f"{os.getenv('JIRA_URL')}/rest/api/3/issue"
     auth = (os.getenv("JIRA_EMAIL"), os.getenv("JIRA_API_TOKEN"))
 
@@ -293,7 +293,7 @@ try:
              key=os.getenv("JIRA_PROJECT_KEY"),
              ocorrido=ocorrido,
              descricao=descricao,
-             issue_type_id="10012",
+             issue_type_id="10001",
              priority_id="2"
           )
 
@@ -323,7 +323,7 @@ try:
              key=os.getenv("JIRA_PROJECT_KEY"),
              ocorrido=ocorrido,
              descricao=descricao,
-             issue_type_id="10012",
+             issue_type_id="10001",
              priority_id="2"
           )
 
@@ -357,7 +357,7 @@ try:
              key=os.getenv("JIRA_PROJECT_KEY"),
              ocorrido=ocorrido,
              descricao=descricao,
-             issue_type_id="10012",
+             issue_type_id="10001",
              priority_id="2"
           )
 
@@ -388,7 +388,7 @@ try:
              key=os.getenv("JIRA_PROJECT_KEY"),
              ocorrido=ocorrido,
              descricao=descricao,
-             issue_type_id="10012",
+             issue_type_id="10001",
              priority_id="2"
           )
 
@@ -422,7 +422,7 @@ try:
              key=os.getenv("JIRA_PROJECT_KEY"),
              ocorrido=ocorrido,
              descricao=descricao,
-             issue_type_id="10012",
+             issue_type_id="10001",
              priority_id="2"
           )
 
@@ -453,7 +453,7 @@ try:
              key=os.getenv("JIRA_PROJECT_KEY"),
              ocorrido=ocorrido,
              descricao=descricao,
-             issue_type_id="10012",
+             issue_type_id="10001",
              priority_id="2"
           )
 
